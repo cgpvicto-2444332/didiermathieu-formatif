@@ -2,7 +2,7 @@ import express from 'express';
 import salutationsRouter from './src/routes/salutations.route.js';
 
 const app = express();
-const port = process.env.port || 3000;
+const port = process.env.port || 3030;
 
 app.use(express.json());
 
