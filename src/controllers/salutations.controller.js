@@ -1,48 +1,25 @@
-import { salutations, ajouterSalutation } from '../models/salutations.model.js';
+import { getSalutationsParLangue, ajouterSalutation, getListeSalutation } from '../models/salutations.model.js';
 
-export const getListe = (req, res) => {
-    res.json(salutations);
-};
-
-// Fonction pour GET /api/salutations/hasard?langue=fr
-export const getHasard = (req, res) => {
-    const langue = req.query.langue;
-
-    // Si une langue est fournie
-    if (langue != null) {
-        let salutationsFiltrees = [];
-        let compteur = 0;
-
-        for (let i = 0; i < salutations.length; i++) {
-            if (salutations[i].code_langue === langue) {
-                salutationsFiltrees[compteur] = salutations[i];
-                compteur++;
-            }
-        }
-
-        if (salutationsFiltrees.length === 0) {
-            res.statusCode = 404;
-            return res.json({
-                message: "Erreur, le code de langue " + langue + " n'existe pas"
-            });
-        }
-
-        // Sélection aléatoire
-        const index = Math.floor(Math.random() * salutationsFiltrees.length);
-        return res.json(salutationsFiltrees[index]);
+export const getListe = async (req, res) => {
+    try {
+        const salutations = await getListeSalutation();
+        res.json(salutations);
+    } catch (erreur) {
+        res.status(500);
+        res.send({
+            message: "Erreur lors de la récupération des salutations"
+        });
+        return;
     }
-
-    const indexTotal = Math.floor(Math.random() * salutations.length);
-    res.json(salutations[indexTotal]);
 };
 
-// Fonction pour POST /api/salutations
-export const postSalutation = (req, res) => {
-    // Vérifier que les champs sont présent
+export const postSalutation = async (req, res) => {
     if(!req.body.code_langue || !req.body.langue || !req.body.message) {
-        return res.status(400).json({
+        res.status(400);
+        res.send({
             message: "Erreur, les paramètres code_langue, langue et message sont obligatoires"
         });
+        return;
     }
     
     const nouvelleSalutation = {
@@ -51,10 +28,50 @@ export const postSalutation = (req, res) => {
         message: req.body.message
     };
     
-    ajouterSalutation(nouvelleSalutation);
+    try {
+        await ajouterSalutation(nouvelleSalutation);
+        
+        res.json({
+            message: "Salutation ajoutée",
+            salutation: req.body.message
+        });
+    } catch (erreur) {
+        res.status(500);
+        res.send({
+            message: "Erreur lors de l'ajout de la salutation"
+        });
+        return;
+    }
+};
+
+export const getListeParLangue = async (req, res) => {
+    const codeLangue = req.params.code_langue;
     
-    res.json({
-        message: "Salutation ajoutée",
-        salutation: req.body.message
-    });
+    if (codeLangue !== 'fr' && codeLangue !== 'en' && codeLangue !== 'es' && codeLangue !== 'de') {
+        res.status(400);
+        res.send({
+            message: "Code de langue invalide. Les codes valides sont : fr, en, es, de"
+        });
+        return;
+    }
+    
+    try {
+        const salutations = await getSalutationsParLangue(codeLangue);
+        
+        if (salutations === null || salutations.length === 0) {
+            res.status(404);
+            res.send({
+                message: `Aucune salutation trouvée pour le code de langue : ${codeLangue}`
+            });
+            return;
+        }
+        
+        res.json(salutations);
+    } catch (erreur) {
+        res.status(500);
+        res.send({
+            message: "Erreur lors de la récupération des salutations"
+        });
+        return;
+    }
 };
